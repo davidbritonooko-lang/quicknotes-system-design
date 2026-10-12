@@ -1,9 +1,13 @@
-// api.js - Task 1: API Client with GET
+// api.js - Task 1 & Task 2: GET and POST
 const API_URL = "https://jsonplaceholder.typicode.com/posts";
 
 const loadBtn = document.getElementById("load-btn");
 const statusEl = document.getElementById("status");
 const notesList = document.getElementById("notes-list");
+const noteForm = document.getElementById("note-form");
+const titleInput = document.getElementById("title-input");
+const bodyInput = document.getElementById("body-input");
+const submitBtn = document.getElementById("submit-btn");
 
 /**
  * Reusable async function to handle fetch requests, validate status, and parse JSON.
@@ -13,7 +17,30 @@ async function request(url, options = {}) {
   if (!response.ok) {
     throw new Error(`HTTP error! Status: ${response.status}`);
   }
-  return response.json();
+  return response;
+}
+
+/**
+ * Helper function to render a single note item into the list.
+ */
+function renderNoteItem(note, prepend = false) {
+  const li = document.createElement("li");
+  li.className = "note-item";
+
+  const titleHeading = document.createElement("h3");
+  titleHeading.textContent = note.title;
+
+  const bodyP = document.createElement("p");
+  bodyP.textContent = note.body || "";
+
+  li.appendChild(titleHeading);
+  li.appendChild(bodyP);
+
+  if (prepend) {
+    notesList.prepend(li);
+  } else {
+    notesList.appendChild(li);
+  }
 }
 
 /**
@@ -25,7 +52,8 @@ async function loadNotes() {
   notesList.innerHTML = "";
 
   try {
-    const notes = await request(`${API_URL}?_limit=10`);
+    const response = await request(`${API_URL}?_limit=10`);
+    const notes = await response.json();
 
     if (notes.length === 0) {
       statusEl.textContent = "No notes available.";
@@ -38,18 +66,7 @@ async function loadNotes() {
     statusEl.textContent = `Loaded ${notes.length} notes from the server.`;
 
     notes.forEach(note => {
-      const li = document.createElement("li");
-      li.className = "note-item";
-
-      const titleHeading = document.createElement("h3");
-      titleHeading.textContent = note.title;
-
-      const bodyP = document.createElement("p");
-      bodyP.textContent = note.body;
-
-      li.appendChild(titleHeading);
-      li.appendChild(bodyP);
-      notesList.appendChild(li);
+      renderNoteItem(note, false);
     });
 
   } catch (error) {
@@ -59,5 +76,60 @@ async function loadNotes() {
   }
 }
 
-// Event Listener
+/**
+ * Creates a new note via POST.
+ */
+async function createNote(event) {
+  event.preventDefault();
+
+  const title = titleInput.value.trim();
+  const body = bodyInput.value.trim();
+
+  // Validation: Title is required and max 100 characters
+  if (!title) {
+    statusEl.textContent = "Error: Title is required.";
+    return;
+  }
+  if (title.length > 100) {
+    statusEl.textContent = "Error: Title must be 100 characters or fewer.";
+    return;
+  }
+
+  submitBtn.disabled = true;
+  statusEl.textContent = "Creating note...";
+
+  try {
+    const response = await request(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=UTF-8"
+      },
+      body: JSON.stringify({
+        title: title,
+        body: body,
+        userId: 1
+      })
+    });
+
+    const newNote = await response.json();
+
+    // Add new note to the top of the list
+    renderNoteItem(newNote, true);
+
+    // Show status code and new id
+    statusEl.textContent = `Note created (status ${response.status}, id ${newNote.id}).`;
+
+    // Clear form
+    titleInput.value = "";
+    bodyInput.value = "";
+
+  } catch (error) {
+    statusEl.textContent = `Error: Could not create note. (${error.message})`;
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+// Event Listeners
 loadBtn.addEventListener("click", loadNotes);
+noteForm.addEventListener("submit", createNote);
