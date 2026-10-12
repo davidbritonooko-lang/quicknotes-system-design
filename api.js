@@ -1,4 +1,4 @@
-// api.js - Task 1 & Task 2: GET and POST
+// api.js - Task 1, 2 & 3: GET, POST and DELETE
 const API_URL = "https://jsonplaceholder.typicode.com/posts";
 
 const loadBtn = document.getElementById("load-btn");
@@ -10,7 +10,7 @@ const bodyInput = document.getElementById("body-input");
 const submitBtn = document.getElementById("submit-btn");
 
 /**
- * Reusable async function to handle fetch requests, validate status, and parse JSON.
+ * Reusable async function to handle fetch requests, validate status, and parse/return response.
  */
 async function request(url, options = {}) {
   const response = await fetch(url, options);
@@ -21,11 +21,14 @@ async function request(url, options = {}) {
 }
 
 /**
- * Helper function to render a single note item into the list.
+ * Helper function to render a single note item into the list with a Delete button.
  */
 function renderNoteItem(note, prepend = false) {
   const li = document.createElement("li");
   li.className = "note-item";
+
+  const contentDiv = document.createElement("div");
+  contentDiv.className = "note-content";
 
   const titleHeading = document.createElement("h3");
   titleHeading.textContent = note.title;
@@ -33,8 +36,16 @@ function renderNoteItem(note, prepend = false) {
   const bodyP = document.createElement("p");
   bodyP.textContent = note.body || "";
 
-  li.appendChild(titleHeading);
-  li.appendChild(bodyP);
+  contentDiv.appendChild(titleHeading);
+  contentDiv.appendChild(bodyP);
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.textContent = "Delete";
+  deleteBtn.className = "delete-btn";
+  deleteBtn.addEventListener("click", () => deleteNote(note.id, li, deleteBtn));
+
+  li.appendChild(contentDiv);
+  li.appendChild(deleteBtn);
 
   if (prepend) {
     notesList.prepend(li);
@@ -127,6 +138,33 @@ async function createNote(event) {
     statusEl.textContent = `Error: Could not create note. (${error.message})`;
   } finally {
     submitBtn.disabled = false;
+  }
+}
+
+/**
+ * Deletes a note by its ID using DELETE.
+ * 
+ * NOTE ON JSONPLACEHOLDER: 
+ * JSONPlaceholder is a mock API that simulates successful requests (returning status 200) 
+ * but does not actually persist deletions on its server. Therefore, to ensure proper 
+ * front-end behavior, we handle the deletion by removing the list item element from the DOM.
+ */
+async function deleteNote(id, listItemEl, deleteBtn) {
+  deleteBtn.disabled = true;
+  statusEl.textContent = `Deleting note ${id}...`;
+
+  try {
+    const response = await request(`${API_URL}/${id}`, {
+      method: "DELETE"
+    });
+
+    // Remove the note element from the DOM on success
+    listItemEl.remove();
+    statusEl.textContent = `Note deleted successfully (status ${response.status}).`;
+
+  } catch (error) {
+    statusEl.textContent = `Error: Could not delete note. (${error.message})`;
+    deleteBtn.disabled = false;
   }
 }
 
